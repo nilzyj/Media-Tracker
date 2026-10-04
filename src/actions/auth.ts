@@ -2,6 +2,7 @@
 
 import { hash } from "bcryptjs";
 import { z } from "zod";
+import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
 import { prisma } from "@/lib/db";
 import { errorMessage } from "@/lib/action-result";
@@ -15,6 +16,25 @@ export type PasswordFormState = {
   errors?: { currentPassword?: string[]; newPassword?: string[] };
   message?: string;
 };
+
+/**
+ * `signIn` 默认会调用 Next.js 的 `redirect()` 来跳转，而 `redirect()` 是靠**抛出**
+ * 一个带 `digest` 的异常实现的。如果把它包在 try/catch 里，成功登录时的跳转
+ * 信号会被当成失败吞掉——结果就是「其实已经登录、cookie 也写好了，但既不跳转
+ * 又显示错误文案」。
+ *
+ * 传 `redirect: false` 后 `signIn` 不再跳转，而是把目标 URL **返回**出来：
+ *   - 成功 -> 返回 callbackUrl（会话 cookie 已写入）
+ *   - 失败 -> 返回 `/login?error=CredentialsSignin&code=...`
+ * 这样就能可靠区分两者，再由我们显式决定跳转或显示错误。
+ */
+function signInErrorCode(url: string): string | null {
+  try {
+    return new URL(url, "http://localhost").searchParams.get("error");
+  } catch {
+    return "Unknown";
+  }
+}
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "昵称至少 2 个字符").max(50),
@@ -51,13 +71,24 @@ export async function registerAction(
     return { message: errorMessage(error) };
   }
 
+  let url: string;
   try {
-    await signIn("credentials", { email, password, redirectTo: "/" });
-  } catch {
+    url = await signIn("credentials", {
+      email,
+      password,
+      redirectTo: "/",
+      redirect: false,
+    });
+  } catch (error) {
+    // redirect:false 下不会抛跳转异常，到这里说明是配置/连接等意外问题
+    return { message: `注册成功，但自动登录失败：${errorMessage(error)}` };
+  }
+
+  if (signInErrorCode(url)) {
     return { message: "注册成功，但自动登录失败，请手动登录" };
   }
 
-  return { ok: true };
+  redirect("/");
 }
 
 const loginSchema = z.object({
@@ -78,19 +109,27 @@ export async function loginAction(
     return { errors: parsed.error.flatten().fieldErrors };
   }
 
+  let url: string;
   try {
-    await signIn("credentials", {
+    url = await signIn("credentials", {
       email: parsed.data.email,
       password: parsed.data.password,
       redirectTo: "/",
+      redirect: false,
     });
-    return {};
   } catch (error) {
-    if (error instanceof Error && error.message.includes("CredentialsSignin")) {
-      return { message: "邮箱或密码不正确" };
-    }
-    return { message: "登录失败，请稍后再试" };
+    return { message: `登录失败：${errorMessage(error)}` };
   }
+
+  const code = signInErrorCode(url);
+  if (code) {
+    return {
+      message:
+        code === "CredentialsSignin" ? "邮箱或密码不正确" : `登录失败（${code}）`,
+    };
+  }
+
+  redirect("/");
 }
 
 const changePasswordSchema = z.object({
