@@ -43,7 +43,8 @@ npm run dev
 |---|---|---|
 | `DATABASE_URL` | 必需 | Neon 的**池化**连接串，运行时使用 |
 | `DIRECT_URL` | 建表必需 | **直连**连接串，Prisma CLI（迁移）使用。Neon 集成不会自动注入这个变量，需要手动加 |
-| `AUTH_SECRET` | 必需 | `openssl rand -base64 32` 或 `npx auth secret` |
+| `AUTH_SECRET` | 必需 | `openssl rand -base64 32` 或 `npx auth secret`。**缺失会导致登录静默失败**，详见下方排错 |
+| `ALLOW_REGISTRATION` | 可选 | 设为 `false` 关闭新用户注册，见下方「关闭注册」 |
 | `TMDB_API_READ_TOKEN` | 可选 | TMDB 后台的 **API Read Access Token**（`eyJ...` 开头）。没有它就只能搜番剧和手动录入 |
 | `NEXT_PUBLIC_APP_URL` | 建议 | 部署后的站点地址 |
 
@@ -52,6 +53,31 @@ npm run dev
 > `prisma generate` 在 `postinstall` 里执行，缺 `DIRECT_URL` 也不会失败
 > （配置里会依次回退到 `DATABASE_URL_UNPOOLED` → `DATABASE_URL` → 占位串，
 > 因为 `generate` 不需要真正连库）。但 `db push` / `migrate` 必须有可连的直连地址。
+
+---
+
+## 关闭注册
+
+站点部署后域名是公开的，默认任何人都能注册账号。加环境变量即可关闭：
+
+```
+ALLOW_REGISTRATION="false"
+```
+
+在 Vercel 上：Settings → Environment Variables → 添加后重新部署。
+
+| | 开放（默认） | 关闭 |
+|---|---|---|
+| `/register` | 显示注册表单 | 显示「注册已关闭」说明页 |
+| 注册接口 | 正常创建账号 | **服务端直接拒绝**（绕过页面直接 POST 也无效） |
+| 登录页 | 有「还没有账号？注册」 | 隐藏入口，改为提示已停止注册 |
+| `/settings` | 「新用户注册：已开放」+ 风险提醒 | 「新用户注册：已关闭」 |
+| 已存在账号 | 正常登录 | **照常登录，不受影响** |
+
+**顺序很重要**：先保持开放注册好自己和家人的账号，再关闭。一旦关闭就没有自助入口了，
+只能改回 `true` 重新部署才能再邀请用户。
+
+想临时邀请一个人：改成 `true` 部署 → 对方注册 → 改回 `false` 部署。
 
 ### TMDB 凭证申请
 
@@ -87,9 +113,14 @@ npm run dev
 
 ### 部署自检清单
 
+登录后如果出现「点提交 → 跳到首页 → 又被弹回登录页」的循环，几乎都是 `AUTH_SECRET` 没配。
+Auth.js 在配置错误时不抛异常，而是返回一个 200 的 error 重定向，所以表面上像登录成功了。
+应用现在会检测「`signIn` 没写出会话 cookie」并直接给出提示文案。
+
 | 检查 | 预期 |
 |---|---|
 | 访问站点根路径 | 302/307 跳到 `/login`（说明 `proxy.ts` 生效） |
+| `GET /api/auth/session` | **必须 200**。返回 500 且文案是 `There was a problem with the server configuration` 说明 `AUTH_SECRET` 没配 |
 | `/login` 能渲染 | 中文界面，侧边栏没有（未登录） |
 | 注册一个账号 | 自动登录并进入首页 |
 | 搜索页搜一个番剧名 | AniList 结果出现，TMDB 有密钥时电影/剧集也出现 |

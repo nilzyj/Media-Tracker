@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { CredentialsSignin } from "next-auth";
 import { signIn } from "@/auth";
 import { prisma } from "@/lib/db";
+import { isRegistrationAllowed } from "@/lib/config";
 import { errorMessage } from "@/lib/action-result";
 
 export type AuthFormState = {
@@ -74,6 +75,11 @@ export async function registerAction(
   _prev: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState & { ok?: boolean }> {
+  // 必须服务端拦一道：页面上的开关只是界面，直接 POST 这个 action 就能绕过。
+  if (!isRegistrationAllowed()) {
+    return { message: "注册已关闭，无法创建新账号" };
+  }
+
   const parsed = registerSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),

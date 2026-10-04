@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isRegistrationAllowed } from "@/lib/config";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "登录" };
@@ -11,7 +12,7 @@ export default function LoginPage() {
         <CardTitle>登录</CardTitle>
       </CardHeader>
       <CardContent>
-        <LoginForm />
+        <LoginForm registrationAllowed={isRegistrationAllowed()} />
       </CardContent>
     </Card>
   );

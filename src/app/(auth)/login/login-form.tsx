@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction, type AuthFormState } from "@/actions/auth";
 
-export function LoginForm() {
+export function LoginForm({ registrationAllowed }: { registrationAllowed: boolean }) {
   const [state, action] = useActionState<AuthFormState, FormData>(loginAction, {});
 
   return (
@@ -46,12 +46,18 @@ export function LoginForm() {
 
       <SubmitButton label="登录" />
 
-      <p className="text-center text-sm text-muted-foreground">
-        还没有账号？
-        <Link href="/register" className="ml-1 underline underline-offset-4">
-          注册
-        </Link>
-      </p>
+      {registrationAllowed ? (
+        <p className="text-center text-sm text-muted-foreground">
+          还没有账号？
+          <Link href="/register" className="ml-1 underline underline-offset-4">
+            注册
+          </Link>
+        </p>
+      ) : (
+        <p className="text-center text-xs text-muted-foreground">
+          当前实例已停止接受新账号注册
+        </p>
+      )}
     </form>
   );
 }
