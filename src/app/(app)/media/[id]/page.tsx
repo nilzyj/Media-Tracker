@@ -58,7 +58,8 @@ export default async function MediaDetailPage(props: PageProps<"/media/[id]">) {
 
   const { media, entry } = detail;
   const isMovie = media.kind === "MOVIE";
-  const seasonal = SEASONAL_KINDS.includes(media.kind);
+  // 分季类型但库里没有季行（例如从 AnyType 导入的作品级进度）也要走作品级进度
+  const seasonal = SEASONAL_KINDS.includes(media.kind) && media.seasons.length > 0;
   const title = displayTitle(media);
   const subtitle = secondaryTitle(media);
 

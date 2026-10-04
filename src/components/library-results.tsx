@@ -133,11 +133,15 @@ export function LibraryResults({ view, works, seasons, page, pageCount }: Librar
     <div className="space-y-4">
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
         {works.map((row, i) => {
-          const seasonal = SEASONAL_KINDS.includes(row.media.kind);
-          // 分季作品用季级进度汇总，其余用作品级 progress / totalEpisodes
-          const flatPct =
-            !seasonal && row.totalEpisodes ? percent(row.progress, row.totalEpisodes) : null;
-          const progress = seasonal ? summarizeProgress(row.seasons) : null;
+          const seasonal = SEASONAL_KINDS.includes(row.media.kind) && row.seasons.length > 0;
+          // 优先季级进度；没有季数据时（剧集 / 动漫也可能只记作品级总集数）退回作品级
+          const seasonProgress = seasonal ? summarizeProgress(row.seasons) : null;
+          const progress =
+            seasonProgress?.total != null && seasonProgress.total > 0
+              ? seasonProgress
+              : row.totalEpisodes && row.totalEpisodes > 0
+                ? { current: row.progress, total: row.totalEpisodes }
+                : null;
 
           return (
             <li key={row.id} className="flex flex-col">
@@ -148,7 +152,6 @@ export function LibraryResults({ view, works, seasons, page, pageCount }: Librar
                 score={row.score}
                 isFavorite={row.isFavorite}
                 progress={progress}
-                flatProgress={flatPct == null ? null : { current: row.progress, total: row.totalEpisodes! }}
                 tags={row.tags.map(({ tag }) => tag)}
               />
               {seasonal && row.seasons.length > 0 && (

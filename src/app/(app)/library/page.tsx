@@ -11,6 +11,19 @@ import type { WorkKind } from "@/generated/prisma/client";
 
 export const metadata: Metadata = { title: "片库" };
 
+const WORK_KINDS = new Set<string>([
+  "MOVIE",
+  "TV",
+  "ANIME",
+  "BOOK",
+  "MANGA",
+  "PODCAST",
+]);
+
+function isWorkKind(value: string | undefined): value is WorkKind {
+  return value != null && WORK_KINDS.has(value);
+}
+
 function parseFilters(params: Record<string, string | string[] | undefined>): LibraryFilters {
   const one = (key: string) => {
     const value = params[key];
@@ -26,7 +39,7 @@ function parseFilters(params: Record<string, string | string[] | undefined>): Li
 
   return {
     status: status && isWatchStatus(status) ? status : "ALL",
-    kind: kind === "MOVIE" || kind === "TV" || kind === "ANIME" ? (kind as WorkKind) : "ALL",
+    kind: isWorkKind(kind) ? kind : "ALL",
     source:
       source === "TMDB" || source === "ANILIST" || source === "MANUAL" ? source : "ALL",
     sort:

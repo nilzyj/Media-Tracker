@@ -30,10 +30,8 @@ type MediaCardProps = {
   status?: WatchStatus;
   score?: number | null;
   isFavorite?: boolean;
-  /** 分季作品的季级汇总进度 */
+  /** 进度：分季作品传季级汇总，其余传作品级 { current, total } */
   progress?: { current: number; total: number | null } | null;
-  /** 作品级进度（书籍、电影、单季剧等不分季的情况） */
-  flatProgress?: { current: number; total: number } | null;
   tags?: { id: string; name: string; color: string | null }[];
   className?: string;
   priority?: boolean;
@@ -47,7 +45,6 @@ export function MediaCard({
   score,
   isFavorite,
   progress,
-  flatProgress,
   tags,
   className,
   priority,
@@ -56,12 +53,8 @@ export function MediaCard({
   const title = displayTitle(media);
   const subtitle = secondaryTitle(media);
   const seasonal = SEASONAL_KINDS.includes(media.kind);
-  const shown = progress?.total
-    ? progress
-    : flatProgress && flatProgress.total > 0
-      ? flatProgress
-      : null;
-  const pct = shown?.total ? percent(shown.current, shown.total) : 0;
+  const shown = progress && progress.total && progress.total > 0 ? progress : null;
+  const pct = shown ? percent(shown.current, shown.total) : 0;
 
   return (
     <Link
