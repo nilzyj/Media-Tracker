@@ -79,6 +79,9 @@ enum WorkKind {
   MOVIE
   TV
   ANIME
+  BOOK
+  MANGA
+  PODCAST
 }
 
 enum MediaSource {
@@ -101,6 +104,8 @@ model Media {
   titleZh       String?
   titleOriginal String
   titleEn       String?
+  /// 作者 / 主演。BOOK、MANGA 主要使用，PODCAST 可填主播。
+  author        String?
   overview      String?
   posterUrl     String?
   backdropUrl   String?
@@ -188,6 +193,11 @@ model MediaEntry {
   notes      String?
   /// Movie only: how many times it has been watched.
   watchCount Int         @default(0)
+  /// 作品级进度：不分季的作品（电影、书籍、单季剧）直接记录已看/已读集数。
+  /// 分季作品仍以 SeasonEntry 的逐季进度为准，两者互不影响。
+  progress   Int         @default(0)
+  /// 作品级总集数，与 progress 配合计算百分比。
+  totalEpisodes Int?
   startedAt  DateTime?
   finishedAt DateTime?
   createdAt  DateTime    @default(now())

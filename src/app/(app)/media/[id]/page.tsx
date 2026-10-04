@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { getMediaDetail } from "@/lib/queries";
 import { Poster } from "@/components/poster";
-import { StatusSelect, WatchCountBump } from "@/components/entry-controls";
+import { StatusSelect, WatchCountBump, WorkProgressBump } from "@/components/entry-controls";
 import { ScorePicker } from "@/components/score-picker";
 import { SeasonList, type SeasonRow } from "@/components/season-list";
 import { TagEditor } from "@/components/tag-editor";
@@ -21,7 +21,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { displayTitle, formatDate, formatRuntime, formatYear, secondaryTitle } from "@/lib/format";
-import { KIND_LABEL, RELEASE_STATUS_LABEL, SOURCE_LABEL } from "@/lib/constants";
+import {
+  KIND_LABEL,
+  RELEASE_STATUS_LABEL,
+  SEASONAL_KINDS,
+  SOURCE_LABEL,
+} from "@/lib/constants";
+import type { WorkKind } from "@/generated/prisma/client";
+
+/** 非影视类型的进度区块标题与计量单位。 */
+const PROGRESS_LABEL: Partial<Record<WorkKind, string>> = {
+  BOOK: "阅读进度",
+  MANGA: "阅读进度",
+  PODCAST: "收听进度",
+};
+const PROGRESS_UNIT: Partial<Record<WorkKind, string>> = {
+  BOOK: "页",
+  MANGA: "话",
+  PODCAST: "期",
+};
 
 export async function generateMetadata(props: PageProps<"/media/[id]">): Promise<Metadata> {
   const { id } = await props.params;
@@ -40,6 +58,7 @@ export default async function MediaDetailPage(props: PageProps<"/media/[id]">) {
 
   const { media, entry } = detail;
   const isMovie = media.kind === "MOVIE";
+  const seasonal = SEASONAL_KINDS.includes(media.kind);
   const title = displayTitle(media);
   const subtitle = secondaryTitle(media);
 
@@ -125,12 +144,13 @@ export default async function MediaDetailPage(props: PageProps<"/media/[id]">) {
                 {isMovie ? formatRuntime(media.runtimeMin) : `单集约 ${media.runtimeMin} 分钟`}
               </span>
             )}
-            {!isMovie && media.totalSeasons && (
+            {!seasonal && media.totalSeasons && (
               <span className="inline-flex items-center gap-1">
                 <Layers className="size-3" />
                 共 {media.totalSeasons} 季
               </span>
             )}
+            {media.author && <span>{media.author}</span>}
             {media.siteUrl && (
               <a
                 href={media.siteUrl}
@@ -164,7 +184,7 @@ export default async function MediaDetailPage(props: PageProps<"/media/[id]">) {
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusSelect entryId={entry.id} status={entry.status} size="sm" />
                   <FavoriteToggle entryId={entry.id} initial={entry.isFavorite} />
-                  <RefreshMetadataButton mediaId={media.id} />
+                  {media.source !== "MANUAL" && <RefreshMetadataButton mediaId={media.id} />}
                   <DeleteEntryButton mediaId={media.id} title={title} />
                 </div>
                 <p className="text-[11px] text-muted-foreground">
@@ -227,7 +247,7 @@ export default async function MediaDetailPage(props: PageProps<"/media/[id]">) {
             <p className="text-sm text-muted-foreground">先在上方选择状态并收藏后即可记录观看次数。</p>
           )}
         </section>
-      ) : (
+      ) : seasonal ? (
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -246,6 +266,30 @@ export default async function MediaDetailPage(props: PageProps<"/media/[id]">) {
           ) : (
             <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
               该作品还不在你的片库里，先在搜索页添加后才能按季追踪。
+            </p>
+          )}
+        </section>
+      ) : (
+        // 书籍 / 漫画 / 播客：没有季，进度直接挂在作品上
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold">{PROGRESS_LABEL[media.kind] ?? "进度"}</h2>
+            <p className="text-xs text-muted-foreground">
+              {entry?.totalEpisodes
+                ? `已记录 ${entry.progress}/${entry.totalEpisodes}`
+                : "设置总集数后即可记录进度"}
+            </p>
+          </div>
+          {entry ? (
+            <WorkProgressBump
+              entryId={entry.id}
+              progress={entry.progress}
+              total={entry.totalEpisodes}
+              unit={PROGRESS_UNIT[media.kind] ?? "集"}
+            />
+          ) : (
+            <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              先在上方选择状态，该作品加入片库后才能记录进度。
             </p>
           )}
         </section>

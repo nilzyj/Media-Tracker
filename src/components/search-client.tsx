@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { addMediaToLibrary, createManualMedia, probeMedia } from "@/actions/media";
-import { KIND_LABEL } from "@/lib/constants";
+import { AUTHOR_KINDS, KIND_LABEL, SEASONAL_KINDS } from "@/lib/constants";
 import type { MediaPreview } from "@/actions/media";
 import type { WorkKind } from "@/generated/prisma/client";
 
@@ -289,6 +289,8 @@ function ManualEntry() {
         posterUrl: String(formData.get("posterUrl") ?? ""),
         releaseDate: String(formData.get("releaseDate") ?? ""),
         runtimeMin: Number(formData.get("runtimeMin") || 0),
+        author: String(formData.get("author") ?? ""),
+        totalEpisodes: Number(formData.get("totalEpisodes") || 0),
         seasonCount: Number(formData.get("seasonCount") || 1),
         seasonEpisodes: Number(formData.get("seasonEpisodes") || 0),
       });
@@ -366,7 +368,7 @@ function ManualEntry() {
             />
           </div>
 
-          {kind !== "MOVIE" && (
+          {SEASONAL_KINDS.includes(kind) ? (
             <>
               <div className="space-y-1.5">
                 <Label htmlFor="seasonCount">季数</Label>
@@ -386,6 +388,27 @@ function ManualEntry() {
                   type="number"
                   min={0}
                   placeholder="选填，之后也可以单独调整每一季"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {AUTHOR_KINDS.includes(kind) && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="author">{kind === "PODCAST" ? "主播" : "作者"}</Label>
+                  <Input id="author" name="author" placeholder="选填" />
+                </div>
+              )}
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="totalEpisodes">
+                  总集数{kind === "BOOK" ? "（页数）" : kind === "MANGA" ? "（话数）" : ""}
+                </Label>
+                <Input
+                  id="totalEpisodes"
+                  name="totalEpisodes"
+                  type="number"
+                  min={0}
+                  placeholder="选填，之后也可以单独调整"
                 />
               </div>
             </>

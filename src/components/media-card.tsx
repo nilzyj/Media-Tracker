@@ -7,7 +7,7 @@ import { AnimatedProgress } from "@/components/animated-progress";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { displayTitle, formatRuntime, percent, secondaryTitle } from "@/lib/format";
-import { KIND_LABEL } from "@/lib/constants";
+import { KIND_LABEL, SEASONAL_KINDS } from "@/lib/constants";
 import type { MediaSource, WatchStatus, WorkKind } from "@/generated/prisma/client";
 
 export type MediaCardData = {
@@ -17,6 +17,7 @@ export type MediaCardData = {
   titleZh: string | null;
   titleOriginal: string;
   titleEn: string | null;
+  author: string | null;
   posterUrl: string | null;
   releaseDate: Date | null;
   runtimeMin: number | null;
@@ -29,7 +30,10 @@ type MediaCardProps = {
   status?: WatchStatus;
   score?: number | null;
   isFavorite?: boolean;
+  /** 分季作品的季级汇总进度 */
   progress?: { current: number; total: number | null } | null;
+  /** 作品级进度（书籍、电影、单季剧等不分季的情况） */
+  flatProgress?: { current: number; total: number } | null;
   tags?: { id: string; name: string; color: string | null }[];
   className?: string;
   priority?: boolean;
@@ -43,6 +47,7 @@ export function MediaCard({
   score,
   isFavorite,
   progress,
+  flatProgress,
   tags,
   className,
   priority,
@@ -50,7 +55,13 @@ export function MediaCard({
 }: MediaCardProps) {
   const title = displayTitle(media);
   const subtitle = secondaryTitle(media);
-  const pct = progress?.total ? percent(progress.current, progress.total) : 0;
+  const seasonal = SEASONAL_KINDS.includes(media.kind);
+  const shown = progress?.total
+    ? progress
+    : flatProgress && flatProgress.total > 0
+      ? flatProgress
+      : null;
+  const pct = shown?.total ? percent(shown.current, shown.total) : 0;
 
   return (
     <Link
@@ -109,7 +120,7 @@ export function MediaCard({
           </div>
         </div>
 
-        {progress?.total ? (
+        {shown ? (
           <div className="absolute inset-x-0 bottom-0 p-2">
             <AnimatedProgress
               value={pct}
@@ -118,7 +129,7 @@ export function MediaCard({
               label={`${title} 进度`}
             />
             <p className="mt-1 text-[11px] font-medium text-white/95 tabular-nums drop-shadow">
-              {progress.current}/{progress.total} 集
+              {shown.current}/{shown.total} 集
             </p>
           </div>
         ) : null}
@@ -128,12 +139,17 @@ export function MediaCard({
         <p className="line-clamp-2 text-sm font-medium leading-snug transition-colors duration-200 group-hover:text-brand" title={title}>
           {title}
         </p>
+{media.author && (
+          <p className="truncate text-xs text-muted-foreground/90" title={media.author}>
+            {media.author}
+          </p>
+        )}
         {subtitle && (
-          <p className="mt-1 truncate text-xs text-muted-foreground" title={subtitle}>
+          <p className="truncate text-xs text-muted-foreground" title={subtitle}>
             {subtitle}
           </p>
         )}
-        <div className="space-y-1.5 pt-2">
+        <div className="mt-auto space-y-1.5 pt-2">
           <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
             <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
               {KIND_LABEL[media.kind]}
@@ -142,7 +158,7 @@ export function MediaCard({
             {media.kind === "MOVIE" && formatRuntime(media.runtimeMin) && (
               <span>{formatRuntime(media.runtimeMin)}</span>
             )}
-            {media.kind !== "MOVIE" && media.totalSeasons && (
+            {seasonal && media.totalSeasons && (
               <span className="inline-flex items-center gap-0.5">
                 <Layers className="size-3" />
                 {media.totalSeasons} 季

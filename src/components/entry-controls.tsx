@@ -1,11 +1,19 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { bumpSeasonProgress, bumpWatchCount, updateEntry, updateSeasonEntry } from "@/actions/entries";
+import {
+  bumpEntryProgress,
+  bumpSeasonProgress,
+  bumpWatchCount,
+  setEntryTotalEpisodes,
+  updateEntry,
+  updateSeasonEntry,
+} from "@/actions/entries";
 import { STATUS_LABEL, WATCH_STATUSES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { WatchStatus } from "@/generated/prisma/client";
@@ -132,6 +140,130 @@ export function ProgressBump({ seasonEntryId, progress, total, size = "sm" }: Pr
       >
         <Plus />
       </Button>
+    </div>
+  );
+}
+
+type WorkProgressProps = {
+  entryId: string;
+  progress: number;
+  total: number | null;
+  /** 「集」/「话」/「回」等计量单位，随作品类型变化。 */
+  unit?: string;
+};
+
+/**
+ * 作品级进度控件。书籍、漫画、播客以及单季剧都没有 Season 行，
+ * 进度直接挂在 MediaEntry 上。
+ */
+export function WorkProgressBump({ entryId, progress, total, unit = "集" }: WorkProgressProps) {
+  const [pending, startTransition] = useTransition();
+  const [draft, setDraft] = useState("");
+  const atMax = total != null && progress >= total;
+
+  function bump(delta: number) {
+    startTransition(async () => {
+      const result = await bumpEntryProgress(entryId, delta);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      if (result.data.reachedEnd && delta > 0) {
+        toast.success("已看完，已自动标记为「已看」");
+      }
+    });
+  }
+
+  function saveTotal() {
+    const value = Number(draft);
+    if (!Number.isFinite(value)) {
+      setDraft("");
+      return;
+    }
+    startTransition(async () => {
+      const result = await setEntryTotalEpisodes(entryId, value);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setDraft("");
+    });
+  }
+
+  if (total == null) {
+    return (
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min={0}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="总集数"
+          aria-label="总集数"
+          className="h-8 w-24"
+        />
+        <Button type="button" variant="outline" size="sm" onClick={saveTotal} disabled={pending || draft === ""}>
+          设置
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon-sm"
+        onClick={() => bump(-1)}
+        disabled={pending || progress <= 0}
+        aria-label={`减少一${unit}`}
+      >
+        <Minus />
+      </Button>
+      <span className="min-w-20 text-center text-sm tabular-nums">
+        {progress}
+        <span className="text-muted-foreground">
+          /{total}
+          {unit}
+        </span>
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon-sm"
+        onClick={() => bump(1)}
+        disabled={pending || atMax}
+        aria-label={`增加一${unit}`}
+      >
+        <Plus />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => setDraft(String(total))}
+        disabled={pending}
+        className="ml-1"
+      >
+        修改总数
+      </Button>
+      {draft !== "" && (
+        <span className="flex items-center gap-1">
+          <Input
+            type="number"
+            min={0}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            aria-label="新的总集数"
+            className="h-8 w-20"
+            autoFocus
+          />
+          <Button type="button" size="sm" onClick={saveTotal} disabled={pending}>
+            保存
+          </Button>
+        </span>
+      )}
     </div>
   );
 }

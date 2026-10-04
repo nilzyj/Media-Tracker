@@ -101,13 +101,18 @@ export async function resyncMedia(mediaId: string): Promise<Media | null> {
   const existing = await prisma.media.findUnique({ where: { id: mediaId } });
   if (!existing) return null;
 
+  // 书籍 / 漫画 / 播客没有上游数据源，只能是手工录入，保持原样。
+  if (existing.source === "MANUAL") return existing;
+
   if (existing.source === "TMDB") {
+    if (existing.kind !== "MOVIE" && existing.kind !== "TV") return existing;
     const { getTmdbMovie, getTmdbTv } = await import("@/lib/tmdb");
     const data = existing.kind === "MOVIE" ? await getTmdbMovie(existing.externalKey) : await getTmdbTv(existing.externalKey);
     return upsertMedia(data);
   }
 
   if (existing.source === "ANILIST") {
+    if (existing.kind !== "ANIME") return existing;
     const { getAnilistMedia } = await import("@/lib/anilist");
     const data = await getAnilistMedia(Number(existing.externalKey));
     return upsertMedia({ ...data, externalKey: existing.externalKey });

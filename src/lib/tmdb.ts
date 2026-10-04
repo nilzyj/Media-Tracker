@@ -116,6 +116,8 @@ export type NormalizedMedia = {
   titleZh: string | null;
   titleOriginal: string;
   titleEn: string | null;
+  /** 作者 / 主演，仅书籍、漫画、播客等手工录入来源会填。 */
+  author: string | null;
   overview: string | null;
   posterUrl: string | null;
   backdropUrl: string | null;
@@ -286,6 +288,7 @@ export async function getTmdbMovie(id: string): Promise<NormalizedMedia> {
     titleZh: detail.title === detail.original_title ? null : detail.title,
     titleOriginal: detail.original_title,
     titleEn: null,
+    author: null,
     overview: detail.overview ?? null,
     posterUrl: tmdbImage(detail.poster_path),
     backdropUrl: tmdbImage(detail.backdrop_path, "w780"),
@@ -321,6 +324,7 @@ export async function getTmdbTv(id: string): Promise<NormalizedMedia> {
     titleZh: detail.name === detail.original_name ? null : detail.name,
     titleOriginal: detail.original_name,
     titleEn: null,
+    author: null,
     overview: detail.overview ?? null,
     posterUrl: tmdbImage(detail.poster_path),
     backdropUrl: tmdbImage(detail.backdrop_path, "w780"),

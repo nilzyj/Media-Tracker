@@ -14,6 +14,7 @@ const mediaCardSelect = {
   titleZh: true,
   titleOriginal: true,
   titleEn: true,
+  author: true,
   posterUrl: true,
   releaseDate: true,
   runtimeMin: true,
@@ -255,6 +256,8 @@ export const getLibrary = cache(async (userId: string, filters: LibraryFilters) 
         isFavorite: true,
         notes: true,
         watchCount: true,
+        progress: true,
+        totalEpisodes: true,
         updatedAt: true,
         media: {
           select: {
@@ -355,6 +358,8 @@ export const getMediaDetail = cache(async (mediaId: string, userId: string) => {
       isFavorite: true,
       notes: true,
       watchCount: true,
+      progress: true,
+      totalEpisodes: true,
       startedAt: true,
       finishedAt: true,
       tags: { select: { tag: { select: { id: true, name: true, color: true } } } },

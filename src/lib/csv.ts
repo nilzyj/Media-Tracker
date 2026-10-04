@@ -3,7 +3,7 @@ import { isWatchStatus } from "@/lib/constants";
 import type { MediaSource, WatchStatus, WorkKind } from "@/generated/prisma/client";
 
 const SOURCES: MediaSource[] = ["TMDB", "ANILIST", "MANUAL"];
-const KINDS: WorkKind[] = ["MOVIE", "TV", "ANIME"];
+const KINDS: WorkKind[] = ["MOVIE", "TV", "ANIME", "BOOK", "MANGA", "PODCAST"];
 
 function escapeCell(value: unknown): string {
   if (value == null) return "";
@@ -18,6 +18,7 @@ export const CSV_HEADERS = [
   "kind",
   "titleOriginal",
   "titleZh",
+  "author",
   "releaseDate",
   "runtimeMin",
   "genres",
@@ -25,6 +26,8 @@ export const CSV_HEADERS = [
   "entryScore",
   "isFavorite",
   "watchCount",
+  "progress",
+  "totalEpisodes",
   "tags",
   "notes",
   "seasonNumber",
@@ -50,6 +53,7 @@ export function toCsv(entries: ExportEntry[]): string {
       entry.media.kind,
       entry.media.titleOriginal,
       entry.media.titleZh,
+      entry.media.author,
       entry.media.releaseDate?.slice(0, 10),
       entry.media.runtimeMin,
       entry.media.genres.join("|"),
@@ -57,6 +61,8 @@ export function toCsv(entries: ExportEntry[]): string {
       entry.score,
       entry.isFavorite ? "1" : "0",
       entry.watchCount,
+      entry.progress,
+      entry.totalEpisodes,
       entry.tags.join("|"),
       entry.notes,
     ];
@@ -206,6 +212,7 @@ export function normalizeImport(raw: unknown, format: "json" | "csv"): ImportPay
           titleOriginal: String(entry.media.titleOriginal),
           titleZh: entry.media.titleZh ? String(entry.media.titleZh) : null,
           titleEn: entry.media.titleEn ? String(entry.media.titleEn) : null,
+          author: entry.media.author ? String(entry.media.author) : null,
           overview: entry.media.overview ? String(entry.media.overview) : null,
           posterUrl: entry.media.posterUrl ? String(entry.media.posterUrl) : null,
           releaseDate: entry.media.releaseDate ? String(entry.media.releaseDate) : null,
@@ -218,6 +225,8 @@ export function normalizeImport(raw: unknown, format: "json" | "csv"): ImportPay
         isFavorite: Boolean(entry.isFavorite),
         notes: entry.notes ? String(entry.notes) : null,
         watchCount: Number(entry.watchCount ?? 0) || 0,
+        progress: Number(entry.progress ?? 0) || 0,
+        totalEpisodes: entry.totalEpisodes ?? null,
         startedAt: entry.startedAt ? String(entry.startedAt) : null,
         finishedAt: entry.finishedAt ? String(entry.finishedAt) : null,
         tags: Array.isArray(entry.tags) ? entry.tags.map(String) : [],
@@ -263,6 +272,7 @@ export function normalizeImport(raw: unknown, format: "json" | "csv"): ImportPay
           titleOriginal: row.titleOriginal || "(未命名)",
           titleZh: row.titleZh || null,
           titleEn: null,
+          author: row.author || null,
           overview: null,
           posterUrl: null,
           releaseDate: row.releaseDate || null,
@@ -275,6 +285,8 @@ export function normalizeImport(raw: unknown, format: "json" | "csv"): ImportPay
         isFavorite: row.isFavorite === "1",
         notes: row.notes || null,
         watchCount: num(row.watchCount) ?? 0,
+        progress: num(row.progress) ?? 0,
+        totalEpisodes: num(row.totalEpisodes),
         startedAt: null,
         finishedAt: null,
         tags: list(row.tags),

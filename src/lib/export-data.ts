@@ -26,6 +26,7 @@ export type ExportEntry = {
     titleOriginal: string;
     titleZh: string | null;
     titleEn: string | null;
+    author: string | null;
     overview: string | null;
     posterUrl: string | null;
     releaseDate: string | null;
@@ -38,6 +39,8 @@ export type ExportEntry = {
   isFavorite: boolean;
   notes: string | null;
   watchCount: number;
+  progress: number;
+  totalEpisodes: number | null;
   startedAt: string | null;
   finishedAt: string | null;
   tags: string[];
@@ -66,6 +69,7 @@ export async function buildExport(userId: string) {
         titleOriginal: entry.media.titleOriginal,
         titleZh: entry.media.titleZh,
         titleEn: entry.media.titleEn,
+        author: entry.media.author,
         overview: entry.media.overview,
         posterUrl: entry.media.posterUrl,
         releaseDate: iso(entry.media.releaseDate),
@@ -78,6 +82,8 @@ export async function buildExport(userId: string) {
       isFavorite: entry.isFavorite,
       notes: entry.notes,
       watchCount: entry.watchCount,
+      progress: entry.progress,
+      totalEpisodes: entry.totalEpisodes,
       startedAt: iso(entry.startedAt),
       finishedAt: iso(entry.finishedAt),
       tags: entry.tags.map((t) => t.tag.name),

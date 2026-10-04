@@ -42,7 +42,19 @@ export const KIND_LABEL: Record<WorkKind, string> = {
   MOVIE: "电影",
   TV: "电视剧",
   ANIME: "动漫",
+  BOOK: "书籍",
+  MANGA: "漫画",
+  PODCAST: "播客",
 };
+
+/** 书籍 / 漫画 / 播客不参与「季」的追踪，进度挂在作品级。 */
+export const FLAT_KINDS: readonly WorkKind[] = ["MOVIE", "BOOK", "MANGA", "PODCAST"];
+
+/** 只有剧集 / 动漫按季追踪。 */
+export const SEASONAL_KINDS: readonly WorkKind[] = ["TV", "ANIME"];
+
+/** 需要作者 / 主播字段的类型。 */
+export const AUTHOR_KINDS: readonly WorkKind[] = ["BOOK", "MANGA", "PODCAST"];
 
 export const SOURCE_LABEL = {
   TMDB: "TMDB",

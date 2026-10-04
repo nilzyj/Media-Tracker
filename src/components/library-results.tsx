@@ -9,6 +9,7 @@ import { ProgressBump, SeasonStatusSelect } from "@/components/entry-controls";
 import { Button } from "@/components/ui/button";
 import { AnimatedProgress } from "@/components/animated-progress";
 import { displayTitle, formatSeasonLabel, percent } from "@/lib/format";
+import { SEASONAL_KINDS } from "@/lib/constants";
 import type { WatchStatus, WorkKind, MediaSource } from "@/generated/prisma/client";
 
 type MediaBrief = {
@@ -18,6 +19,7 @@ type MediaBrief = {
   titleZh: string | null;
   titleOriginal: string;
   titleEn: string | null;
+  author: string | null;
   posterUrl: string | null;
   releaseDate: Date | null;
   runtimeMin: number | null;
@@ -31,6 +33,8 @@ type WorkRow = {
   score: number | null;
   isFavorite: boolean;
   watchCount: number;
+  progress: number;
+  totalEpisodes: number | null;
   media: MediaBrief;
   tags: { tag: { id: string; name: string; color: string | null } }[];
   seasons: {
@@ -129,8 +133,11 @@ export function LibraryResults({ view, works, seasons, page, pageCount }: Librar
     <div className="space-y-4">
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
         {works.map((row, i) => {
-          const isMovie = row.media.kind === "MOVIE";
-          const progress = isMovie ? null : summarizeProgress(row.seasons);
+          const seasonal = SEASONAL_KINDS.includes(row.media.kind);
+          // 分季作品用季级进度汇总，其余用作品级 progress / totalEpisodes
+          const flatPct =
+            !seasonal && row.totalEpisodes ? percent(row.progress, row.totalEpisodes) : null;
+          const progress = seasonal ? summarizeProgress(row.seasons) : null;
 
           return (
             <li key={row.id} className="flex flex-col">
@@ -141,15 +148,16 @@ export function LibraryResults({ view, works, seasons, page, pageCount }: Librar
                 score={row.score}
                 isFavorite={row.isFavorite}
                 progress={progress}
+                flatProgress={flatPct == null ? null : { current: row.progress, total: row.totalEpisodes! }}
                 tags={row.tags.map(({ tag }) => tag)}
               />
-              {!isMovie && row.seasons.length > 0 && (
+              {seasonal && row.seasons.length > 0 && (
                 <p className="mt-1 flex items-center gap-1 px-1 text-[11px] text-muted-foreground">
                   <Layers className="size-3" />
                   已追踪 {row.seasons.length} 季
                 </p>
               )}
-              {isMovie && row.watchCount > 0 && (
+              {row.media.kind === "MOVIE" && row.watchCount > 0 && (
                 <p className="mt-1 px-1 text-[11px] text-muted-foreground">
                   已看 {row.watchCount} 次
                 </p>

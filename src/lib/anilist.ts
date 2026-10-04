@@ -217,6 +217,7 @@ function toNormalized(m: AnilistMedia, seasons: NormalizedSeason[]): NormalizedM
     externalKey: String(m.id),
     titleZh: localisedTitle(m.title, romaji),
     titleOriginal: romaji || id,
+    author: null,
     titleEn: english && english !== romaji ? english : null,
     overview: m.description?.trim() ? m.description.trim() : null,
     posterUrl: m.coverImage?.large ?? m.coverImage?.medium ?? null,

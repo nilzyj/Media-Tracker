@@ -17,7 +17,14 @@ const scoreSchema = z.number().int().min(1).max(10).nullable();
 async function ownedEntry(entryId: string, userId: string) {
   return prisma.mediaEntry.findFirst({
     where: { id: entryId, userId },
-    select: { id: true, status: true, mediaId: true, media: { select: { kind: true } } },
+    select: {
+      id: true,
+      status: true,
+      mediaId: true,
+      progress: true,
+      totalEpisodes: true,
+      media: { select: { kind: true } },
+    },
   });
 }
 
@@ -343,6 +350,63 @@ export async function markAllSeasonsWatched(entryId: string): Promise<ActionResu
 
   refresh();
   return ok();
+}
+
+// ---------------------------------------------------------------------------
+// Work-level progress (books, manga, podcasts, single-season shows)
+// ---------------------------------------------------------------------------
+
+export async function bumpEntryProgress(
+  entryId: string,
+  delta: number,
+): Promise<ActionResult<{ progress: number; total: number | null; reachedEnd: boolean }>> {
+  const user = await requireUser();
+  const existing = await ownedEntry(entryId, user.id);
+  if (!existing) return fail("未找到该记录");
+
+  const total = existing.totalEpisodes;
+  const next = Math.max(0, Math.min(total ?? Number.MAX_SAFE_INTEGER, existing.progress + delta));
+  const reachedEnd = Boolean(total && next >= total);
+
+  const data: Record<string, unknown> = { progress: next };
+  if (next > 0 && existing.status === "PLANNING") {
+    data.status = "WATCHING";
+    data.startedAt = new Date();
+  }
+  if (reachedEnd && existing.status === "WATCHING") {
+    data.status = "COMPLETED";
+    data.finishedAt = new Date();
+  }
+
+  try {
+    await prisma.mediaEntry.update({ where: { id: entryId }, data });
+    refresh();
+    return okWith({ progress: next, total, reachedEnd });
+  } catch (error) {
+    return fail(errorMessage(error));
+  }
+}
+
+/** Set the work-level total, needed before progress can be tracked. */
+export async function setEntryTotalEpisodes(
+  entryId: string,
+  total: number,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  const existing = await ownedEntry(entryId, user.id);
+  if (!existing) return fail("未找到该记录");
+
+  const clean = Math.max(0, Math.min(100000, Math.floor(total) || 0));
+  try {
+    await prisma.mediaEntry.update({
+      where: { id: entryId },
+      data: { totalEpisodes: clean || null, progress: Math.min(existing.progress, clean || 0) },
+    });
+    refresh();
+    return ok();
+  } catch (error) {
+    return fail(errorMessage(error));
+  }
 }
 
 // ---------------------------------------------------------------------------

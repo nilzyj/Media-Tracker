@@ -10,6 +10,7 @@ import { getAnilistMedia } from "@/lib/anilist";
 import { fail, ok, okWith, errorMessage, type ActionResult } from "@/lib/action-result";
 import type { NormalizedMedia } from "@/lib/tmdb";
 import type { WorkKind } from "@/generated/prisma/client";
+import { SEASONAL_KINDS } from "@/lib/constants";
 
 export type MediaPreview = {
   source: "TMDB" | "ANILIST";
@@ -92,8 +93,9 @@ export async function addMediaToLibrary(
 const manualSchema = z.object({
   title: z.string().trim().min(1, "请填写标题").max(200),
   titleZh: z.string().trim().max(200).optional(),
+  author: z.string().trim().max(200).optional(),
   overview: z.string().trim().max(4000).optional(),
-  kind: z.enum(["MOVIE", "TV", "ANIME"]),
+  kind: z.enum(["MOVIE", "TV", "ANIME", "BOOK", "MANGA", "PODCAST"]),
   posterUrl: z
     .union([z.url("海报必须是有效链接"), z.literal("")])
     .optional(),
@@ -101,6 +103,7 @@ const manualSchema = z.object({
   runtimeMin: z.coerce.number().int().min(0).max(2000).optional(),
   seasonCount: z.coerce.number().int().min(1).max(100).optional(),
   seasonEpisodes: z.coerce.number().int().min(0).max(5000).optional(),
+  totalEpisodes: z.coerce.number().int().min(0).max(100000).optional(),
 });
 
 /** Fallback path when no API key is configured or a title is not indexed. */
@@ -114,7 +117,7 @@ export async function createManualMedia(
 
   try {
     const externalKey = `manual-${crypto.randomUUID()}`;
-    const seasonCount = data.kind === "MOVIE" ? 0 : (data.seasonCount ?? 1);
+    const seasonCount = SEASONAL_KINDS.includes(data.kind) ? (data.seasonCount ?? 1) : 0;
     const episodes = data.seasonEpisodes ?? null;
 
     const media = await upsertMedia({
@@ -124,6 +127,7 @@ export async function createManualMedia(
       titleZh: data.titleZh?.trim() || null,
       titleOriginal: data.title,
       titleEn: null,
+      author: data.author?.trim() || null,
       overview: data.overview?.trim() || null,
       posterUrl: data.posterUrl || null,
       backdropUrl: null,
@@ -144,7 +148,12 @@ export async function createManualMedia(
     });
 
     await prisma.mediaEntry.create({
-      data: { userId: user.id, mediaId: media.id, status: "PLANNING" },
+      data: {
+        userId: user.id,
+        mediaId: media.id,
+        status: "PLANNING",
+        totalEpisodes: data.totalEpisodes ?? null,
+      },
     });
 
     revalidatePath("/", "layout");
