@@ -159,10 +159,16 @@ export function ImportExportPanel() {
               {pending ? <Loader2 className="animate-spin" /> : <FileUp />}
               预览
             </Button>
-            <Button type="button" onClick={doImport} disabled={pending || !file}>
-              确认导入
-            </Button>
+      <Button type="button" onClick={doImport} disabled={pending || !file}>
+        确认导入
+      </Button>
           </div>
+
+          <p className="text-xs text-muted-foreground">
+            单个文件上限 4 MB（受 Server Action 请求体限制）。导入会按{" "}
+            <code>externalKey</code> 匹配已有作品：选择「合并」只补齐缺失的季，选择「覆盖」会用文件里的状态与进度。
+          </p>
+
 
           {preview && (
             <Alert>
@@ -230,6 +236,12 @@ function AnilistImportForm() {
         return;
       }
       toast.success(`已导入 ${result.data.works} 部番剧，${result.data.seasons} 条进度记录`);
+      if (result.data.truncated) {
+        toast.warning(
+          `列表共 ${result.data.total} 条，本次只处理了前 ${result.data.works} 条以避免请求超时。再点一次「开始导入」可继续，已导入的会被跳过。`,
+          { duration: 9000 },
+        );
+      }
       router.refresh();
     });
   }

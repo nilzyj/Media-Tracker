@@ -22,10 +22,18 @@ export type ImportResult = {
   skipped: number;
 };
 
+/**
+ * Must stay in sync with `experimental.serverActions.bodySizeLimit` in
+ * next.config.ts (4MB), which is itself below Vercel's 4.5MB request cap.
+ */
+const MAX_IMPORT_BYTES = 4 * 1024 * 1024;
+
 async function parsePayload(formData: FormData): Promise<ImportPayload | { error: string }> {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "请选择一个文件" };
-  if (file.size > 8 * 1024 * 1024) return { error: "文件过大（上限 8 MB）" };
+  if (file.size > MAX_IMPORT_BYTES) {
+    return { error: `文件过大（上限 ${MAX_IMPORT_BYTES / 1024 / 1024} MB）` };
+  }
 
   const format = String(formData.get("format") ?? "json");
   const text = await file.text();
@@ -197,7 +205,20 @@ const anilistImportSchema = z.object({
   includeScores: z.boolean().optional(),
 });
 
-export type AnilistImportResult = { works: number; seasons: number };
+export type AnilistImportResult = {
+  works: number;
+  seasons: number;
+  total: number;
+  truncated: boolean;
+};
+
+/**
+ * Each entry costs several sequential Neon round-trips, so a very large AniList
+ * list can outrun the platform's function timeout. The import is idempotent
+ * (everything is an upsert), so capping a run and letting the user re-run it is
+ * safer than dying halfway through with no feedback.
+ */
+const ANILIST_BATCH_LIMIT = 150;
 
 /** Import an existing AniList list as tracked series. */
 export async function importFromAnilist(
@@ -214,12 +235,13 @@ export async function importFromAnilist(
     const list = await getAnilistUserList(parsed.data.userName);
     if (list.length === 0) return fail("该 AniList 用户的番剧列表为空");
 
-    const mediaMap = await fetchAnilistMediaMap([...new Set(list.map((e) => e.mediaId))]);
+    const batch = list.slice(0, ANILIST_BATCH_LIMIT);
+    const mediaMap = await fetchAnilistMediaMap([...new Set(batch.map((e) => e.mediaId))]);
 
     let works = 0;
     let seasons = 0;
 
-    for (const item of list) {
+    for (const item of batch) {
       const media = mediaMap.get(item.mediaId);
       if (!media) continue;
 
@@ -260,7 +282,12 @@ export async function importFromAnilist(
       seasons += 1;
     }
 
-    return okWith({ works, seasons });
+    return okWith({
+      works,
+      seasons,
+      total: list.length,
+      truncated: list.length > batch.length,
+    });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "AniList 导入失败");
   }

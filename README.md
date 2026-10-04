@@ -42,12 +42,16 @@ npm run dev
 | 变量 | 是否必需 | 说明 |
 |---|---|---|
 | `DATABASE_URL` | 必需 | Neon 的**池化**连接串，运行时使用 |
-| `DIRECT_URL` | 必需 | Neon 的**直连**连接串，Prisma CLI（迁移）使用 |
+| `DIRECT_URL` | 建表必需 | **直连**连接串，Prisma CLI（迁移）使用。Neon 集成不会自动注入这个变量，需要手动加 |
 | `AUTH_SECRET` | 必需 | `openssl rand -base64 32` 或 `npx auth secret` |
 | `TMDB_API_READ_TOKEN` | 可选 | TMDB 后台的 **API Read Access Token**（`eyJ...` 开头）。没有它就只能搜番剧和手动录入 |
 | `NEXT_PUBLIC_APP_URL` | 建议 | 部署后的站点地址 |
 
 **AniList 无需密钥。**
+
+> `prisma generate` 在 `postinstall` 里执行，缺 `DIRECT_URL` 也不会失败
+> （配置里会依次回退到 `DATABASE_URL_UNPOOLED` → `DATABASE_URL` → 占位串，
+> 因为 `generate` 不需要真正连库）。但 `db push` / `migrate` 必须有可连的直连地址。
 
 ### TMDB 凭证申请
 
@@ -70,15 +74,36 @@ npm run dev
 2. 在 Vercel 导入仓库
 3. **Storage → Marketplace → Neon Postgres → Install**，Neon 会自动注入
    `DATABASE_URL`（池化）与 `DATABASE_URL_UNPOOLED`（直连）
-4. 把 `DATABASE_URL_UNPOOLED` 复制一份为 `DIRECT_URL`
-5. 在 **Settings → Environment Variables** 添加 `AUTH_SECRET`（和可选的 `TMDB_API_READ_TOKEN`）
-6. 部署完成后运行一次建表：
+4. 添加其余环境变量：
+   - `DIRECT_URL` = Neon 控制台 **Direct connection** 那一行（集成不会自动建这个变量）
+   - `AUTH_SECRET`（`npx auth secret`）
+   - `TMDB_API_READ_TOKEN`（可选）
+   - `NEXT_PUBLIC_APP_URL` = 你的站点域名
+5. 部署完成后建表。本地 `.env` 填好后执行：
 
    ```bash
-   DATABASE_URL="<pooled>" DIRECT_URL="<direct>" npx prisma db push
+   npm run db:push
    ```
 
-   （也可以本地 `.env` 填好后执行 `npm run db:push`。）
+### 部署自检清单
+
+| 检查 | 预期 |
+|---|---|
+| 访问站点根路径 | 302/307 跳到 `/login`（说明 `proxy.ts` 生效） |
+| `/login` 能渲染 | 中文界面，侧边栏没有（未登录） |
+| 注册一个账号 | 自动登录并进入首页 |
+| 搜索页搜一个番剧名 | AniList 结果出现，TMDB 有密钥时电影/剧集也出现 |
+| 添加一部多季番剧 | 弹出「识别到多季作品」确认框，季数正确 |
+| 详情页季列表 | 已存在的季可选，未追踪的季灰态显示「加入追踪」 |
+| `/stats` | 图表能渲染（空数据显示「暂无数据」不算失败） |
+| 侧边栏底部 | 显示 TMDB 归属声明 |
+
+### 平台限制说明
+
+- **Server Action 请求体上限 4 MB**（`next.config.ts` 的 `bodySizeLimit`）。
+  导入表单按同一数值校验，超出会给出明确提示而不是 413。个人片库的 JSON 备份通常只有几十 KB。
+- **AniList 批量导入单次最多 150 条**，避免撞上函数超时。
+  操作是幂等的（全部走 upsert），列表更长时再点一次「开始导入」即可续跑，已导入的会被跳过。
 
 ---
 
