@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Layers } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clapperboard, Layers } from "lucide-react";
 import { Poster } from "@/components/poster";
 import { MediaCard } from "@/components/media-card";
 import { ProgressBump, SeasonStatusSelect } from "@/components/entry-controls";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
+import { AnimatedProgress } from "@/components/animated-progress";
 import { displayTitle, formatSeasonLabel, percent } from "@/lib/format";
 import type { WatchStatus, WorkKind, MediaSource } from "@/generated/prisma/client";
 
@@ -103,7 +102,7 @@ export function LibraryResults({ view, works, seasons, page, pageCount }: Librar
                   </Link>
                   {total ? (
                     <div className="mt-1.5 flex items-center gap-2">
-                      <Progress value={percent(row.progress, total)} className="w-28" />
+                      <AnimatedProgress value={percent(row.progress, total)} variant="brand" animated label="本季进度" className="w-28" />
                       <span className="text-[11px] text-muted-foreground tabular-nums">
                         {row.progress}/{total}
                       </span>
@@ -129,13 +128,14 @@ export function LibraryResults({ view, works, seasons, page, pageCount }: Librar
   return (
     <div className="space-y-4">
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
-        {works.map((row) => {
+        {works.map((row, i) => {
           const isMovie = row.media.kind === "MOVIE";
           const progress = isMovie ? null : summarizeProgress(row.seasons);
 
           return (
-            <li key={row.id}>
+            <li key={row.id} className="flex flex-col">
               <MediaCard
+                index={i}
                 media={row.media}
                 status={row.status}
                 score={row.score}
@@ -225,10 +225,12 @@ function PageLink({
 
 function EmptyState() {
   return (
-    <div className="rounded-lg border border-dashed p-12 text-center">
-      <Badge variant="secondary">空</Badge>
-      <p className="mt-3 text-sm text-muted-foreground">没有符合条件的记录</p>
-      <Button asChild variant="outline" size="sm" className="mt-4">
+    <div className="animate-scale-in grid place-items-center rounded-xl border border-dashed p-14 text-center">
+      <span className="grid size-12 place-items-center rounded-xl bg-brand-gradient text-white shadow-[0_16px_36px_-18px_var(--brand)]">
+        <Clapperboard className="size-5" />
+      </span>
+      <p className="mt-4 text-sm text-muted-foreground">没有符合条件的记录</p>
+      <Button asChild variant="outline" size="sm" className="mt-5 transition-all hover:border-brand/40 hover:text-brand">
         <Link href="/search">去搜索添加</Link>
       </Button>
     </div>

@@ -74,19 +74,39 @@ export default async function MediaDetailPage(props: PageProps<"/media/[id]">) {
     : null;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
+    <div className="relative min-h-full">
+      {/* 背景图 + 渐变遮罩，充当详情页的 hero 底 */}
+      {media.backdropUrl && (
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[30rem] overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={media.backdropUrl}
+            alt=""
+            className="size-full scale-110 object-cover opacity-35 blur-[3px] saturate-125"
+          />
+          {/* 品牌色晕染：浅色主题下用正片叠底压出影院色调，避免背景被洗成纯白 */}
+          <div className="absolute inset-0 bg-brand/15 mix-blend-multiply dark:mix-blend-screen dark:bg-brand/20" />
+          {/* 双向遮罩：纵向收边融入页面，横向保证标题与右侧表单可读 */}
+          <div className="absolute inset-0 bg-gradient-to-b from-background/85 via-background/75 to-background" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/55 to-background/15" />
+        </div>
+      )}
+
+      <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+      <Button asChild variant="ghost" size="sm" className="animate-fade-up -ml-2">
         <Link href="/library">← 返回片库</Link>
       </Button>
 
-      <div className="flex flex-col gap-6 sm:flex-row">
-        <div className="relative aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-lg bg-muted sm:w-48">
+      <div className="animate-fade-up flex flex-col gap-6 sm:flex-row" style={{ animationDelay: "80ms" }}>
+        <div className="relative aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-xl bg-muted shadow-[0_24px_50px_-24px_var(--brand)] ring-1 ring-foreground/5 sm:w-48">
           <Poster src={media.posterUrl} alt={title} sizes="192px" priority />
         </div>
 
-        <div className="min-w-0 flex-1 space-y-4">
+        <div className="animate-fade-up min-w-0 flex-1 space-y-4" style={{ animationDelay: "140ms" }}>
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold leading-tight">{title}</h1>
+            <h1 className="bg-brand-gradient inline-block bg-clip-text text-2xl font-semibold leading-tight text-transparent sm:text-3xl">
+              {title}
+            </h1>
             {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
             {media.titleZh && media.titleEn && (
               <p className="text-xs text-muted-foreground/80">{media.titleEn}</p>
@@ -231,6 +251,7 @@ export default async function MediaDetailPage(props: PageProps<"/media/[id]">) {
           )}
         </section>
       )}
+      </div>
     </div>
   );
 }

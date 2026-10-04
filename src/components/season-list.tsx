@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { CheckCheck, Plus, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+import { AnimatedProgress } from "@/components/animated-progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ProgressBump, SeasonStatusSelect } from "@/components/entry-controls";
 import { joinSeason, leaveSeason, markAllSeasonsWatched, setSeasonProgress, updateSeasonEntry } from "@/actions/entries";
@@ -123,7 +123,7 @@ function SeasonItem({ entryId, season }: { entryId: string; season: SeasonRow })
 
           {total ? (
             <div className="mt-1.5 flex items-center gap-2">
-              <Progress value={percent(tracked.progress, total)} className="w-32" />
+              <AnimatedProgress value={percent(tracked.progress, total)} variant="brand" animated label={`本季进度`} className="w-32" />
               <span className="text-xs text-muted-foreground tabular-nums">
                 {tracked.progress}/{total} 集
               </span>

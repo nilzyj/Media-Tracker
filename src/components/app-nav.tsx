@@ -25,13 +25,13 @@ export function AppNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+              "group relative flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-200",
               active
-                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                ? "bg-brand-gradient font-medium text-white shadow-[0_10px_24px_-14px_var(--brand)]"
+                : "text-muted-foreground hover:bg-sidebar-accent/70 hover:text-foreground",
             )}
           >
-            <item.icon className="size-4" />
+            <item.icon className="size-4 transition-transform duration-200 group-hover:scale-110" />
             {item.label}
           </Link>
         );
