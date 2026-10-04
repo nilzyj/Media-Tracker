@@ -3,6 +3,7 @@
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { CredentialsSignin } from "next-auth";
 import { signIn } from "@/auth";
 import { prisma } from "@/lib/db";
@@ -45,6 +46,23 @@ function signInErrorCode(url: string): string | null {
     return "Unknown";
   }
 }
+
+/**
+ * `signIn` 返回了目标 URL 但会话 cookie 一个都没写出来 —— 这不是凭证问题，
+ * 而是服务器配置问题，最常见的原因是 Vercel 上没配 `AUTH_SECRET`
+ * （Auth.js 会把 assertConfig 的失败渲染成一个 error 重定向，仍然 200，
+ *   于是 signIn 看起来"成功"了）。
+ *
+ * 不拦住的话，用户看到的是「跳到首页 → 又被弹回登录页」的静默循环，
+ * 完全无从排查。这里显式识别并给出可操作的提示。
+ */
+async function sessionCookieWritten(): Promise<boolean> {
+  const jar = await cookies();
+  return jar.getAll().some((c) => c.name.includes("session-token"));
+}
+
+const NO_SESSION_COOKIE =
+  "登录失败：服务器未下发会话 cookie。若刚部署完，请确认 Vercel 已配置 AUTH_SECRET 环境变量并重新部署。";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "昵称至少 2 个字符").max(50),
@@ -101,6 +119,10 @@ export async function registerAction(
     return { message: "注册成功，但自动登录失败，请手动登录" };
   }
 
+  if (!(await sessionCookieWritten())) {
+    return { message: `注册成功，但自动登录失败。${NO_SESSION_COOKIE}` };
+  }
+
   redirect("/");
 }
 
@@ -138,6 +160,10 @@ export async function loginAction(
   const code = signInErrorCode(url);
   if (code) {
     return { message: code === "CredentialsSignin" ? WRONG_CREDENTIALS : `登录失败（${code}）` };
+  }
+
+  if (!(await sessionCookieWritten())) {
+    return { message: NO_SESSION_COOKIE };
   }
 
   redirect("/");
