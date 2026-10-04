@@ -440,7 +440,7 @@ function EmptyLibrary() {
         <p className="mt-2 text-sm text-muted-foreground">
           去搜索页添加电影、电视剧或番剧。支持 TMDB 与 AniList 双数据源，也可以手动录入。
         </p>
-        <Button asChild className="mt-7 rounded-full">
+        <Button asChild className="bg-brand-gradient mt-7 rounded-full text-white hover:opacity-90">
           <Link href="/search">开始添加</Link>
         </Button>
       </div>
