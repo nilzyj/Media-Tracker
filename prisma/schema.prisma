@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js (next-auth v5) models
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  role          String    @default("USER")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts  Account[]
+  sessions  Session[]
+  entries   MediaEntry[]
+  tags      Tag[]
+  anilistId String?
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Media catalogue — shared across users
+// ---------------------------------------------------------------------------
+
+enum WorkKind {
+  MOVIE
+  TV
+  ANIME
+}
+
+enum MediaSource {
+  TMDB
+  ANILIST
+  MANUAL
+}
+
+enum ReleaseStatus {
+  ONGOING
+  FINISHED
+  CANCELLED
+}
+
+model Media {
+  id            String         @id @default(cuid())
+  kind          WorkKind
+  source        MediaSource
+  externalKey   String
+  titleZh       String?
+  titleOriginal String
+  titleEn       String?
+  overview      String?
+  posterUrl     String?
+  backdropUrl   String?
+  releaseDate   DateTime?
+  /// Movie: total runtime in minutes. TV/ANIME: typical per-episode runtime.
+  runtimeMin    Int?
+  releaseStatus ReleaseStatus?
+  totalSeasons  Int?
+  siteUrl       String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  seasons Season[]
+  genres  MediaGenre[]
+  entries MediaEntry[]
+
+  @@unique([source, externalKey])
+  @@index([kind])
+  @@map("media")
+}
+
+/// A single season of a TV show or anime series. Rows exist for every season
+/// returned by the upstream API so the UI can list untracked seasons greyed out.
+model Season {
+  id            String    @id @default(cuid())
+  mediaId       String
+  seasonNumber  Int
+  title         String
+  posterUrl     String?
+  totalEpisodes Int?
+  airedDate     DateTime?
+  externalKey   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  media   Media         @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  entries SeasonEntry[]
+
+  @@unique([mediaId, seasonNumber])
+  @@map("seasons")
+}
+
+model Genre {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+
+  media MediaGenre[]
+
+  @@map("genres")
+}
+
+model MediaGenre {
+  mediaId String
+  genreId String
+
+  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([mediaId, genreId])
+  @@map("media_genres")
+}
+
+// ---------------------------------------------------------------------------
+// Per-user tracking
+// ---------------------------------------------------------------------------
+
+enum WatchStatus {
+  PLANNING
+  WATCHING
+  COMPLETED
+  ON_HOLD
+  DROPPED
+}
+
+/// A user's record for one work. For series the status is maintained manually
+/// and is intentionally decoupled from the status of individual seasons.
+model MediaEntry {
+  id         String      @id @default(cuid())
+  userId     String
+  mediaId    String
+  status     WatchStatus @default(PLANNING)
+  score      Int?
+  isFavorite Boolean     @default(false)
+  notes      String?
+  /// Movie only: how many times it has been watched.
+  watchCount Int         @default(0)
+  startedAt  DateTime?
+  finishedAt DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media   Media         @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  tags    EntryTag[]
+  seasons SeasonEntry[]
+
+  @@unique([userId, mediaId])
+  @@index([userId, status])
+  @@map("media_entries")
+}
+
+/// Per-season tracking: status, progress and score are all independent.
+model SeasonEntry {
+  id            String      @id @default(cuid())
+  entryId       String
+  seasonId      String
+  status        WatchStatus @default(PLANNING)
+  progress      Int         @default(0)
+  totalEpisodes Int?
+  score         Int?
+  rewatchCount  Int         @default(0)
+  notes         String?
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  lastWatchedAt DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  entry  MediaEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  season Season     @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, seasonId])
+  @@index([status])
+  @@map("season_entries")
+}
+
+model Tag {
+  id     String  @id @default(cuid())
+  userId String
+  name   String
+  color  String?
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries EntryTag[]
+
+  @@unique([userId, name])
+  @@map("tags")
+}
+
+model EntryTag {
+  entryId String
+  tagId   String
+
+  entry MediaEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  tag   Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, tagId])
+  @@map("entry_tags")
+}
