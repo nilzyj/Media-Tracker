@@ -3,6 +3,7 @@
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { CredentialsSignin } from "next-auth";
 import { signIn } from "@/auth";
 import { prisma } from "@/lib/db";
 import { errorMessage } from "@/lib/action-result";
@@ -19,15 +20,24 @@ export type PasswordFormState = {
 
 /**
  * `signIn` 默认会调用 Next.js 的 `redirect()` 来跳转，而 `redirect()` 是靠**抛出**
- * 一个带 `digest` 的异常实现的。如果把它包在 try/catch 里，成功登录时的跳转
- * 信号会被当成失败吞掉——结果就是「其实已经登录、cookie 也写好了，但既不跳转
- * 又显示错误文案」。
+ * 一个带 `digest` 的异常实现的。把它包在 try/catch 里会把成功登录时的跳转信号
+ * 当成失败吞掉——结果就是「其实已登录、cookie 也写好了，但既不跳转又显示错误」。
  *
- * 传 `redirect: false` 后 `signIn` 不再跳转，而是把目标 URL **返回**出来：
- *   - 成功 -> 返回 callbackUrl（会话 cookie 已写入）
- *   - 失败 -> 返回 `/login?error=CredentialsSignin&code=...`
- * 这样就能可靠区分两者，再由我们显式决定跳转或显示错误。
+ * 传 `redirect: false` 后 `signIn` 不再跳转，行为变成：
+ *   - 成功 -> 返回目标 URL（会话 cookie 已写入）
+ *   - 凭证错误 -> **抛出 CredentialsSignin**
+ *     （@auth/core 的 Auth() 在 raw 模式下走
+ *      `if (isAuthError && isRaw && !isRedirect) throw error`）
+ *
+ * 所以失败信息要从异常里取，成功才需要显式 redirect()。
  */
+const WRONG_CREDENTIALS = "邮箱或密码不正确";
+
+function isWrongCredentials(error: unknown): boolean {
+  return error instanceof CredentialsSignin;
+}
+
+/** 兜底：万一 Auth.js 改成返回带 error 参数的 URL，也能识别出来。 */
 function signInErrorCode(url: string): string | null {
   try {
     return new URL(url, "http://localhost").searchParams.get("error");
@@ -80,7 +90,10 @@ export async function registerAction(
       redirect: false,
     });
   } catch (error) {
-    // redirect:false 下不会抛跳转异常，到这里说明是配置/连接等意外问题
+    if (isWrongCredentials(error)) {
+      // 账号刚建好却校验失败，只可能是并发写入或哈希异常，如实告知
+      return { message: "注册成功，但自动登录失败，请手动登录" };
+    }
     return { message: `注册成功，但自动登录失败：${errorMessage(error)}` };
   }
 
@@ -118,15 +131,13 @@ export async function loginAction(
       redirect: false,
     });
   } catch (error) {
+    if (isWrongCredentials(error)) return { message: WRONG_CREDENTIALS };
     return { message: `登录失败：${errorMessage(error)}` };
   }
 
   const code = signInErrorCode(url);
   if (code) {
-    return {
-      message:
-        code === "CredentialsSignin" ? "邮箱或密码不正确" : `登录失败（${code}）`,
-    };
+    return { message: code === "CredentialsSignin" ? WRONG_CREDENTIALS : `登录失败（${code}）` };
   }
 
   redirect("/");
