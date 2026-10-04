@@ -176,12 +176,55 @@
   --brand: oklch(0.58 0.2 288);
   --brand-soft: oklch(0.68 0.19 328);
   --brand-fg: oklch(0.99 0 0);
+
+  /* Bento 模块的三级阴影：靠明度差制造悬浮层次 */
+  --bento-elev-1: 0 1px 2px oklch(0.145 0 0 / 0.04), 0 4px 12px -8px oklch(0.145 0 0 / 0.1);
+  --bento-elev-2: 0 2px 4px oklch(0.145 0 0 / 0.04), 0 14px 30px -14px oklch(0.145 0 0 / 0.14);
+  --bento-elev-3: 0 4px 10px oklch(0.145 0 0 / 0.05), 0 28px 56px -22px oklch(0.145 0 0 / 0.2);
 }
 
 .dark {
   --brand: oklch(0.66 0.19 288);
   --brand-soft: oklch(0.72 0.18 328);
   --brand-fg: oklch(0.16 0 0);
+
+  --bento-elev-1: 0 1px 2px oklch(0 0 0 / 0.3), 0 4px 12px -8px oklch(0 0 0 / 0.45);
+  --bento-elev-2: 0 2px 6px oklch(0 0 0 / 0.34), 0 16px 32px -16px oklch(0 0 0 / 0.55);
+  --bento-elev-3: 0 6px 14px oklch(0 0 0 / 0.4), 0 32px 64px -24px oklch(0 0 0 / 0.7);
+}
+
+/* 模块统一的大圆角与描边，构成 Bento 的几何基调 */
+@utility bento {
+  border-radius: var(--bento-radius, 1.75rem);
+  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  background-color: color-mix(in oklch, var(--card) 72%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+@utility bento-hover {
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s ease;
+}
+
+@utility bento-lift {
+  &:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in oklch, var(--brand) 35%, transparent);
+  }
+}
+
+@utility elev-1 {
+  box-shadow: var(--bento-elev-1);
+}
+
+@utility elev-2 {
+  box-shadow: var(--bento-elev-2);
+}
+
+@utility elev-3 {
+  box-shadow: var(--bento-elev-3);
 }
 
 @utility bg-brand-gradient {
@@ -359,6 +402,70 @@
  */
 @utility stagger {
   animation-delay: calc(var(--index, 0) * 45ms);
+}
+
+/* ---------------------------------------------------------------------------
+   Bento 模块专用动画：环形进度、条形增长、模块入场
+   --------------------------------------------------------------------------- */
+
+/* 环形进度：从 0 扫到目标值 */
+@keyframes ring-sweep {
+  from {
+    stroke-dashoffset: var(--ring-circumference, 100);
+  }
+  to {
+    stroke-dashoffset: var(--ring-target, 0);
+  }
+}
+
+@utility ring-progress {
+  stroke-dasharray: var(--ring-circumference, 100);
+  stroke-dashoffset: var(--ring-target, 0);
+  animation: ring-sweep 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(140ms + var(--index, 0) * 80ms);
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+/* 条形增长：沿 X 轴展开 */
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@utility bar-grow {
+  transform-origin: left center;
+  animation: bar-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(180ms + var(--index, 0) * 70ms);
+}
+
+/* 模块入场：轻微缩放 + 上浮，比列表淡入更有体量感 */
+@keyframes bento-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility bento-in {
+  animation: bento-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--index, 0) * 70ms);
+}
+
+/* Bento 背景网格：极淡的方格，强调几何结构 */
+@utility bg-grid-lines {
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--foreground) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 5%, transparent) 1px, transparent 1px);
+  background-size: 2.5rem 2.5rem;
 }
 
 /* ---------------------------------------------------------------------------
