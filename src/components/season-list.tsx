@@ -50,10 +50,7 @@ export function SeasonList({ entryId, seasons }: SeasonListProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          共 {seasons.length} 季 · 状态与进度按季独立记录
-        </p>
+      <div className="flex justify-end">
         <Button type="button" variant="outline" size="sm" onClick={markAll} disabled={pending}>
           <CheckCheck />
           全部标记已看

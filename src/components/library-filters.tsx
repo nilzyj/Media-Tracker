@@ -12,9 +12,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { KIND_LABEL, STATUS_LABEL, WATCH_STATUSES } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import type { WorkKind } from "@/generated/prisma/client";
 
 type Option = { id: string; name: string };
+
+const TRIGGER_ACTIVE = "border-brand/50 bg-brand/8 text-foreground";
 
 type LibraryFiltersProps = {
   tags: Option[];
@@ -77,9 +80,10 @@ export function LibraryFilters({ tags, genres, total }: LibraryFiltersProps) {
         </span>
       </div>
 
+      {/* 已生效的筛选用品牌色标出，避免和未生效的控件混成一片 */}
       <div className="flex flex-wrap items-center gap-2">
         <Select value={current.status} onValueChange={(v) => setParam("status", v)}>
-          <SelectTrigger size="sm" className="w-28">
+          <SelectTrigger size="sm" className={cn("w-28", current.status !== "ALL" && TRIGGER_ACTIVE)}>
             <SelectValue placeholder="状态" />
           </SelectTrigger>
           <SelectContent>
@@ -93,7 +97,7 @@ export function LibraryFilters({ tags, genres, total }: LibraryFiltersProps) {
         </Select>
 
         <Select value={current.kind} onValueChange={(v) => setParam("kind", v)}>
-          <SelectTrigger size="sm" className="w-28">
+          <SelectTrigger size="sm" className={cn("w-28", current.kind !== "ALL" && TRIGGER_ACTIVE)}>
             <SelectValue placeholder="类型" />
           </SelectTrigger>
           <SelectContent>
@@ -107,7 +111,7 @@ export function LibraryFilters({ tags, genres, total }: LibraryFiltersProps) {
         </Select>
 
         <Select value={current.source} onValueChange={(v) => setParam("source", v)}>
-          <SelectTrigger size="sm" className="w-32">
+          <SelectTrigger size="sm" className={cn("w-28", current.source !== "ALL" && TRIGGER_ACTIVE)}>
             <SelectValue placeholder="来源" />
           </SelectTrigger>
           <SelectContent>
@@ -120,7 +124,7 @@ export function LibraryFilters({ tags, genres, total }: LibraryFiltersProps) {
 
         {tags.length > 0 && (
           <Select value={current.tagId} onValueChange={(v) => setParam("tagId", v)}>
-            <SelectTrigger size="sm" className="w-32">
+            <SelectTrigger size="sm" className={cn("w-28", current.tagId && TRIGGER_ACTIVE)}>
               <SelectValue placeholder="标签" />
             </SelectTrigger>
             <SelectContent>
@@ -136,8 +140,8 @@ export function LibraryFilters({ tags, genres, total }: LibraryFiltersProps) {
 
         {genres.length > 0 && (
           <Select value={current.genreId} onValueChange={(v) => setParam("genreId", v)}>
-            <SelectTrigger size="sm" className="w-32">
-              <SelectValue placeholder="类型题材" />
+            <SelectTrigger size="sm" className={cn("w-28", current.genreId && TRIGGER_ACTIVE)}>
+              <SelectValue placeholder="题材" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">全部题材</SelectItem>
@@ -151,7 +155,7 @@ export function LibraryFilters({ tags, genres, total }: LibraryFiltersProps) {
         )}
 
         <Select value={current.sort} onValueChange={(v) => setParam("sort", v)}>
-          <SelectTrigger size="sm" className="w-32">
+          <SelectTrigger size="sm" className={cn("w-28", current.sort !== "updated" && TRIGGER_ACTIVE)}>
             <SelectValue placeholder="排序" />
           </SelectTrigger>
           <SelectContent>

@@ -15,7 +15,7 @@ import { ProgressBump, WatchCountBump } from "@/components/entry-controls";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { displayTitle, formatDate, formatSeasonLabel, percent } from "@/lib/format";
-import { STATUS_LABEL, WATCH_STATUSES } from "@/lib/constants";
+import { STATUS_LABEL } from "@/lib/constants";
 
 export const metadata = { title: "首页" };
 
@@ -176,7 +176,7 @@ export default async function DashboardPage() {
 
         {recent.works.length > 0 && (
           <section className="space-y-3">
-            <SectionTitle title="最近看完" />
+            <SectionTitle title="最近看完的作品" />
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
               {recent.works.map((item, i) => (
                 <li key={item.entryId} className="flex flex-col">
@@ -196,7 +196,8 @@ export default async function DashboardPage() {
           <section className="space-y-3">
             <SectionTitle title="最近看完的季" />
             <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {recent.seasons.map((item, i) => (
+              {/* 网格为 3 列，多取一项会出现落单的一行 */}
+              {recent.seasons.slice(0, 3).map((item, i) => (
                 <li
                   key={item.seasonEntryId}
                   style={{ "--index": Math.min(i, 10) } as CSSProperties}
@@ -229,13 +230,6 @@ export default async function DashboardPage() {
             </ul>
           </section>
         )}
-
-        <footer className="pt-2">
-          <p className="text-xs text-muted-foreground">
-            状态分布：
-            {WATCH_STATUSES.map((s) => `${STATUS_LABEL[s]} ${summary.counts[s] ?? 0}`).join(" · ")}
-          </p>
-        </footer>
       </div>
     </div>
   );
